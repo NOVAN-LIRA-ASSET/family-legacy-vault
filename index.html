@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Family Legacy Vault - Asset Management</title>
+    <title>Family Legacy Vault - Manajemen Aset Keluarga</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -11,38 +11,36 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen">
+<body class="bg-slate-950 text-slate-100 antialiased min-h-screen selection:bg-indigo-500 selection:text-white">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
         function App() {
-            // Initial Mock Data or LocalStorage
             const [assets, setAssets] = useState(() => {
-                const saved = localStorage.getItem('family_vault_assets');
+                const saved = localStorage.getItem('family_vault_assets_v4');
                 if (saved) {
                     try { return JSON.parse(saved); } catch (e) { }
                 }
                 return [
                     { id: 1, name: "Toyota Voxy Hybrid 2015", category: "Kendaraan", value: 285000000, ownership: "Bersama", location: "Garasi Rumah", notes: "BPKB lengkap atas nama sendiri", file: "bpkd_voxy.pdf" },
                     { id: 2, name: "Rumah Tinggal Takatsuki", category: "Properti", value: 3500000000, ownership: "Bersama", location: "Osaka Prefecture", notes: "Sertifikat hak milik utama", file: "sertifikat_rumah.pdf" },
-                    { id: 3, name: "Tabungan Mizuho Bank", category: "Rekening Bank", value: 125000000, ownership: "Suami", location: "Mizuho Bank Takatsuki", notes: "Rekening gaji utama", file: "mizuho_book.pdf" },
-                    { id: 4, name: "Logam Mulia Antam 50gr", category: "Logam Mulia", value: 65000000, ownership: "Istri", location: "Brankas Rumah", notes: "Sertifikat ANTAM resmi", file: "sertifikat_emas.jpg" },
-                    { id: 5, name: "Tabungan Masa Depan Anak", category: "Rekening Bank", value: 45000000, ownership: "Anak", location: "JP Post Bank", notes: "Untuk tabungan pendidikan Zayuna", file: "yucho_book.pdf" }
+                    { id: 3, name: "Tabungan Mizuho Bank", category: "Rekening Bank", value: 125000000, ownership: "Suami", location: "Mizuho Bank Takatsuki", notes: "Rekening gaji utama Novan", file: "mizuho_book.pdf" },
+                    { id: 4, name: "Logam Mulia Antam 50gr", category: "Logam Mulia", value: 65000000, ownership: "Istri", location: "Brankas Rumah", notes: "Sertifikat ANTAM resmi Lira", file: "sertifikat_emas.jpg" },
+                    { id: 5, name: "Tabungan Masa Depan Anak", category: "Rekening Bank", value: 45000000, ownership: "Anak", location: "JP Post Bank", notes: "Tabungan Zayuna Safiya", file: "yucho_book.pdf" }
                 ];
             });
 
             const [filterCategory, setFilterCategory] = useState("All");
+            const [filterOwnership, setFilterOwnership] = useState("All");
             const [searchQuery, setSearchQuery] = useState("");
             const [isPrivacyMasked, setIsPrivacyMasked] = useState(false);
+            const [viewMode, setViewMode] = useState("table");
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [editingAsset, setEditingAsset] = useState(null);
 
-            // Form State
             const [formData, setFormData] = useState({
                 name: "",
                 category: "Properti",
@@ -54,36 +52,66 @@
             });
 
             useEffect(() => {
-                localStorage.setItem('family_vault_assets', JSON.stringify(assets));
+                localStorage.setItem('family_vault_assets_v4', JSON.stringify(assets));
             }, [assets]);
 
             const categories = ["All", "Properti", "Kendaraan", "Rekening Bank", "Investasi", "Logam Mulia"];
 
+            const getCategoryMeta = (cat) => {
+                switch(cat) {
+                    case 'Properti': return { icon: '🏠', bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/20' };
+                    case 'Kendaraan': return { icon: '🚗', bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' };
+                    case 'Rekening Bank': return { icon: '🏦', bg: 'bg-indigo-500/10', text: 'text-indigo-400', border: 'border-indigo-500/20' };
+                    case 'Investasi': return { icon: '📈', bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/20' };
+                    case 'Logam Mulia': return { icon: '🥇', bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20' };
+                    default: return { icon: '💎', bg: 'bg-slate-800', text: 'text-slate-300', border: 'border-slate-700' };
+                }
+            };
+
             const filteredAssets = useMemo(() => {
                 return assets.filter(item => {
                     const matchesCategory = filterCategory === "All" || item.category === filterCategory;
+                    const matchesOwnership = filterOwnership === "All" || item.ownership === filterOwnership;
                     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                          item.location.toLowerCase().includes(searchQuery.toLowerCase());
-                    return matchesCategory && matchesSearch;
+                                          (item.location && item.location.toLowerCase().includes(searchQuery.toLowerCase()));
+                    return matchesCategory && matchesOwnership && matchesSearch;
                 });
-            }, [assets, filterCategory, searchQuery]);
+            }, [assets, filterCategory, filterOwnership, searchQuery]);
 
             const totalNetWorth = useMemo(() => {
                 return assets.reduce((sum, item) => sum + Number(item.value || 0), 0);
             }, [assets]);
 
+            const ownershipSummary = useMemo(() => {
+                const summary = { Suami: 0, Istri: 0, Bersama: 0, Anak: 0 };
+                assets.forEach(item => {
+                    if (summary[item.ownership] !== undefined) {
+                        summary[item.ownership] += Number(item.value || 0);
+                    }
+                });
+                return summary;
+            }, [assets]);
+
+            const categorySummary = useMemo(() => {
+                const summary = {};
+                assets.forEach(item => {
+                    summary[item.category] = (summary[item.category] || 0) + Number(item.value || 0);
+                });
+                return summary;
+            }, [assets]);
+
             const formatIDR = (val) => {
-                if (isPrivacyMasked) return "Rp ******";
+                if (isPrivacyMasked) return "Rp *******";
                 return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
             };
 
             const getOwnershipBadge = (ownership) => {
                 switch(ownership) {
-                    case 'Bersama': return 'bg-blue-100 text-blue-700 border-blue-200';
-                    case 'Suami': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-                    case 'Istri': return 'bg-purple-100 text-purple-700 border-purple-200';
-                    case 'Anak': return 'bg-amber-100 text-amber-700 border-amber-200';
-                    default: return 'bg-slate-100 text-slate-700 border-slate-200';
+                    case 'Bersama': return 'bg-blue-500/20 text-blue-300 border-blue-500/40';
+                    case 'Suami': return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+                    case 'Istri': return 'bg-purple-500/20 text-purple-300 border-purple-500/40';
+                    case 'Anak': return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+                    default: return 'bg-slate-800 text-slate-300 border-slate-700';
                 }
             };
 
@@ -127,264 +155,330 @@
                 downloadAnchor.remove();
             };
 
+            const copyLink = () => {
+                navigator.clipboard.writeText(window.location.href);
+                alert("Link aplikasi berhasil disalin! Bagikan ke perangkat lain.");
+            };
+
             return (
-                <div className="max-w-7xl mx-auto px-4 py-8">
-                    {/* Header & Privacy Toggle */}
-                    <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <div className="max-w-7xl mx-auto px-4 py-6 md:py-10">
+                    {/* Header Top Bar */}
+                    <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8 bg-slate-900/90 backdrop-blur-xl p-6 md:p-8 rounded-3xl border border-indigo-500/20 shadow-2xl">
                         <div>
-                            <div className="flex items-center gap-2">
-                                <span className="bg-indigo-600 text-white p-2 rounded-xl">🛡️</span>
-                                <h1 className="text-2xl font-bold text-slate-900">Family Legacy Vault</h1>
+                            <div className="flex items-center gap-2 text-xs font-bold tracking-widest text-indigo-400 uppercase">
+                                <span>🛡️ FAMILY LEGACY VAULT</span>
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span className="text-emerald-400 font-semibold">LIVE MULTI-DEVICE</span>
                             </div>
-                            <p className="text-sm text-slate-500 mt-1">Modul Manajemen Aset Keluarga & Kekayaan Bersih</p>
+                            <h1 className="text-2xl md:text-4xl font-black text-white mt-1 tracking-tight">Manajemen Aset Keluarga</h1>
+                            <p className="text-sm text-slate-300 mt-1">Pusat Informasi Portofolio Kekayaan, Properti & Dokumen (Mac, Windows, HP)</p>
                         </div>
 
-                        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
-                            <button 
-                                onClick={() => setIsPrivacyMasked(!isPrivacyMasked)}
-                                className={`px-4 py-2 rounded-xl text-sm font-medium border transition flex items-center gap-2 ${isPrivacyMasked ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'}`}
-                            >
+                        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+                            <button onClick={copyLink} className="px-4 py-2.5 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 rounded-2xl text-xs font-bold border border-indigo-500/40 transition flex items-center gap-2 shadow-lg">
+                                🔗 Salin Link
+                            </button>
+                            <button onClick={exportData} className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-2xl text-xs font-bold border border-slate-700 transition flex items-center gap-2 shadow-lg">
+                                💾 Backup / Sync
+                            </button>
+                            <button onClick={() => setIsPrivacyMasked(!isPrivacyMasked)} className={`px-4 py-2.5 rounded-2xl text-xs font-bold border transition flex items-center gap-2 shadow-lg ${isPrivacyMasked ? 'bg-amber-500/20 border-amber-500/40 text-amber-300' : 'bg-slate-800 border-slate-700 text-slate-200'}`}>
                                 {isPrivacyMasked ? '👁️ Tampilkan Nilai' : '🔒 Sembunyikan Nilai'}
                             </button>
-
-                            <button 
-                                onClick={exportData}
-                                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium transition"
-                                title="Backup data ke file JSON"
-                            >
-                                💾 Backup
+                            <button onClick={() => handleOpenModal()} className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-black rounded-2xl text-xs shadow-xl shadow-indigo-600/40 transition flex items-center gap-2">
+                                ➕ Tambah Aset
                             </button>
                         </div>
                     </header>
 
-                    {/* Asset Summary Header Card */}
-                    <div className="bg-gradient-to-r from-indigo-900 to-slate-900 text-white rounded-3xl p-6 md:p-8 shadow-xl mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                        <div>
-                            <span className="text-indigo-300 text-sm font-medium uppercase tracking-wider">Total Estimated Net Worth</span>
-                            <div className="text-3xl md:text-5xl font-extrabold mt-1 tracking-tight">
+                    {/* Net Worth Dashboard Card */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                        <div className="lg:col-span-2 bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 rounded-3xl p-6 md:p-8 border border-indigo-500/30 shadow-2xl relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-8 opacity-10 text-8xl font-black">💎</div>
+                            <div className="flex justify-between items-start">
+                                <span className="text-indigo-300 text-xs font-black uppercase tracking-wider">TOTAL ESTIMASI NET WORTH KELUARGA</span>
+                                <span className="px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-bold rounded-full flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span> Real-time Update
+                                </span>
+                            </div>
+                            <div className="text-3xl md:text-5xl font-black text-white mt-3 tracking-tight drop-shadow-md">
                                 {formatIDR(totalNetWorth)}
                             </div>
-                            <p className="text-indigo-200 text-xs mt-2">Akumulasi dari {assets.length} aset terdaftar</p>
-                        </div>
-                        <button 
-                            onClick={() => handleOpenModal()}
-                            className="w-full md:w-auto bg-indigo-500 hover:bg-indigo-400 text-white font-semibold px-6 py-3 rounded-2xl shadow-lg transition flex items-center justify-center gap-2"
-                        >
-                            ➕ Tambah Aset Baru
-                        </button>
-                    </div>
+                            <p className="text-slate-400 text-xs mt-2">Terakumulasi dari {assets.length} instrumen aset keluarga terdaftar dan terverifikasi.</p>
 
-                    {/* Filter & Search Controls */}
-                    <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 mb-6">
-                        {/* Filter Tabs */}
-                        <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0 scrollbar-none">
-                            {categories.map(cat => (
-                                <button
-                                    key={cat}
-                                    onClick={() => setFilterCategory(cat)}
-                                    className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition ${filterCategory === cat ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'}`}
-                                >
-                                    {cat}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Search Bar */}
-                        <div className="relative w-full lg:w-72">
-                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">🔍</span>
-                            <input 
-                                type="text"
-                                placeholder="Cari nama aset atau lokasi..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Asset Table / Grid */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                        {filteredAssets.length === 0 ? (
-                            <div className="text-center py-16 text-slate-400">
-                                <p className="text-lg">Tidak ada aset yang ditemukan.</p>
-                                <p className="text-sm mt-1">Coba ubah kata kunci pencarian atau kategori.</p>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-800/80">
+                                <div className="bg-slate-900/80 p-3 rounded-2xl border border-emerald-500/20">
+                                    <div className="text-[11px] text-slate-400 font-bold">👨‍💼 Suami (Novan)</div>
+                                    <div className="text-sm md:text-base font-black text-emerald-400 mt-1">{formatIDR(ownershipSummary.Suami)}</div>
+                                </div>
+                                <div className="bg-slate-900/80 p-3 rounded-2xl border border-purple-500/20">
+                                    <div className="text-[11px] text-slate-400 font-bold">👩‍💼 Istri (Lira)</div>
+                                    <div className="text-sm md:text-base font-black text-purple-400 mt-1">{formatIDR(ownershipSummary.Istri)}</div>
+                                </div>
+                                <div className="bg-slate-900/80 p-3 rounded-2xl border border-blue-500/20">
+                                    <div className="text-[11px] text-slate-400 font-bold">💍 Bersama</div>
+                                    <div className="text-sm md:text-base font-black text-blue-400 mt-1">{formatIDR(ownershipSummary.Bersama)}</div>
+                                </div>
+                                <div className="bg-slate-900/80 p-3 rounded-2xl border border-amber-500/20">
+                                    <div className="text-[11px] text-slate-400 font-bold">👶 Anak (Zayuna)</div>
+                                    <div className="text-sm md:text-base font-black text-amber-400 mt-1">{formatIDR(ownershipSummary.Anak)}</div>
+                                </div>
                             </div>
-                        ) : (
+                        </div>
+
+                        {/* Category Distribution Widget */}
+                        <div className="bg-slate-900/90 backdrop-blur-xl rounded-3xl p-6 border border-slate-800 shadow-2xl flex flex-col justify-between">
+                            <div>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-sm font-black text-white uppercase tracking-wider">📊 Distribusi Kategori</h3>
+                                    <span className="text-xs text-indigo-400 font-bold">Ringkasan</span>
+                                </div>
+                                <div className="space-y-3">
+                                    {Object.entries(categorySummary).map(([cat, val]) => {
+                                        const meta = getCategoryMeta(cat);
+                                        return (
+                                            <div key={cat} className="flex justify-between items-center text-xs p-2.5 rounded-xl bg-slate-950/50 border border-slate-800/80">
+                                                <span className="text-slate-200 font-bold flex items-center gap-2">
+                                                    <span>{meta.icon}</span> {cat}
+                                                </span>
+                                                <span className="font-black text-indigo-300">{formatIDR(val)}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            <div className="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400 text-center font-medium">
+                                💡 Sangat mudah dibaca & diakses di semua gadget.
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Ownership Quick Filter Buttons (Khusus Orang Tua & Mertua) */}
+                    <div className="mb-6 bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 p-5 rounded-3xl border border-indigo-500/30 shadow-xl">
+                        <div className="text-xs font-black text-indigo-300 uppercase mb-3 tracking-wider flex items-center gap-2">
+                            <span>🔍 PILIH KEPEMILIKAN (Untuk Orang Tua & Mertua Melihat Langsung):</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2.5">
+                            <button 
+                                onClick={() => setFilterOwnership("All")}
+                                className={`px-5 py-2.5 rounded-2xl text-xs font-black transition shadow-md ${filterOwnership === "All" ? 'bg-indigo-600 text-white shadow-indigo-600/40' : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-700'}`}
+                            >
+                                🌟 Semua Aset Keluarga
+                            </button>
+                            <button 
+                                onClick={() => setFilterOwnership("Suami")}
+                                className={`px-5 py-2.5 rounded-2xl text-xs font-black transition shadow-md ${filterOwnership === "Suami" ? 'bg-emerald-600 text-white shadow-emerald-600/40' : 'bg-slate-900 text-emerald-400 hover:bg-slate-800 border border-emerald-500/40'}`}
+                            >
+                                👨‍💼 ASSET NOVAN (Suami)
+                            </button>
+                            <button 
+                                onClick={() => setFilterOwnership("Istri")}
+                                className={`px-5 py-2.5 rounded-2xl text-xs font-black transition shadow-md ${filterOwnership === "Istri" ? 'bg-purple-600 text-white shadow-purple-600/40' : 'bg-slate-900 text-purple-400 hover:bg-slate-800 border border-purple-500/40'}`}
+                            >
+                                👩‍💼 ASSET LIRA (Istri)
+                            </button>
+                            <button 
+                                onClick={() => setFilterOwnership("Bersama")}
+                                className={`px-5 py-2.5 rounded-2xl text-xs font-black transition shadow-md ${filterOwnership === "Bersama" ? 'bg-blue-600 text-white shadow-blue-600/40' : 'bg-slate-900 text-blue-400 hover:bg-slate-800 border border-blue-500/40'}`}
+                            >
+                                💍 ASSET BERSAMA (Suami & Istri)
+                            </button>
+                            <button 
+                                onClick={() => setFilterOwnership("Anak")}
+                                className={`px-5 py-2.5 rounded-2xl text-xs font-black transition shadow-md ${filterOwnership === "Anak" ? 'bg-amber-600 text-white shadow-amber-600/40' : 'bg-slate-900 text-amber-400 hover:bg-slate-800 border border-amber-500/40'}`}
+                            >
+                                👶 ASSET ANAK (Zayuna)
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Category Tabs & Search & View Toggle */}
+                    <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 mb-6">
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0 scrollbar-none">
+                            {categories.map(cat => {
+                                const meta = getCategoryMeta(cat);
+                                return (
+                                    <button
+                                        key={cat}
+                                        onClick={() => setFilterCategory(cat)}
+                                        className={`px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition flex items-center gap-2 shadow-sm ${filterCategory === cat ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'}`}
+                                    >
+                                        <span>{cat === 'All' ? '📂' : meta.icon}</span> {cat}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <div className="relative w-full lg:w-72">
+                                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">🔍</span>
+                                <input 
+                                    type="text"
+                                    placeholder="Cari nama aset atau lokasi..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-2xl text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
+                            <div className="flex bg-slate-900 border border-slate-800 rounded-2xl p-1 shadow-inner">
+                                <button onClick={() => setViewMode("table")} className={`px-4 py-2 rounded-xl text-xs font-bold transition ${viewMode === 'table' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}>📋 Tabel</button>
+                                <button onClick={() => setViewMode("grid")} className={`px-4 py-2 rounded-xl text-xs font-bold transition ${viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}>🔲 Kartu</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Asset Content Display */}
+                    {filteredAssets.length === 0 ? (
+                        <div className="bg-slate-900/80 rounded-3xl border border-slate-800 text-center py-20 text-slate-400 shadow-xl">
+                            <div className="text-4xl mb-2">📂</div>
+                            <p className="text-base font-bold text-slate-200">Tidak ada aset yang ditemukan.</p>
+                            <p className="text-xs text-slate-500 mt-1">Coba ubah kata kunci pencarian atau filter kepemilikan.</p>
+                        </div>
+                    ) : viewMode === 'table' ? (
+                        <div className="bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-slate-800 shadow-2xl overflow-hidden">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
-                                        <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                            <th className="py-4 px-6">Nama Aset</th>
-                                            <th className="py-4 px-6">Kategori</th>
-                                            <th className="py-4 px-6">Estimasi Nilai</th>
+                                        <tr className="bg-slate-950/80 border-b border-slate-800 text-[11px] font-black text-slate-400 uppercase tracking-wider">
+                                            <th className="py-4 px-6">Nama Aset & Nilai Total</th>
                                             <th className="py-4 px-6">Kepemilikan</th>
-                                            <th className="py-4 px-6">Lokasi / Catatan</th>
+                                            <th className="py-4 px-6">Lokasi & Keterangan</th>
                                             <th className="py-4 px-6 text-right">Aksi</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100 text-sm">
-                                        {filteredAssets.map(item => (
-                                            <tr key={item.id} className="hover:bg-slate-50/80 transition">
-                                                <td className="py-4 px-6 font-medium text-slate-900">
-                                                    {item.name}
-                                                    {item.file && <span className="block text-xs text-indigo-600 font-normal mt-0.5">📄 {item.file}</span>}
-                                                </td>
-                                                <td className="py-4 px-6">
-                                                    <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium">
-                                                        {item.category}
-                                                    </span>
-                                                </td>
-                                                <td className="py-4 px-6 font-semibold text-slate-900">
-                                                    {formatIDR(item.value)}
-                                                </td>
-                                                <td className="py-4 px-6">
-                                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getOwnershipBadge(item.ownership)}`}>
-                                                        {item.ownership}
-                                                    </span>
-                                                </td>
-                                                <td className="py-4 px-6 text-slate-500">
-                                                    <div className="font-medium text-slate-700">{item.location || '-'}</div>
-                                                    <div className="text-xs text-slate-400 truncate max-w-xs">{item.notes}</div>
-                                                </td>
-                                                <td className="py-4 px-6 text-right space-x-2">
-                                                    <button 
-                                                        onClick={() => handleOpenModal(item)}
-                                                        className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition"
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => handleDelete(item.id)}
-                                                        className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-medium transition"
-                                                    >
-                                                        Hapus
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                    <tbody className="divide-y divide-slate-800/60 text-xs">
+                                        {filteredAssets.map(item => {
+                                            const meta = getCategoryMeta(item.category);
+                                            return (
+                                                <tr key={item.id} className="hover:bg-slate-800/50 transition">
+                                                    <td className="py-4 px-6">
+                                                        <div className="flex items-center gap-3">
+                                                            <span className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xl ${meta.bg} border ${meta.border} shadow-md`}>
+                                                                {meta.icon}
+                                                            </span>
+                                                            <div>
+                                                                <div className="font-black text-white text-sm">{item.name}</div>
+                                                                <div className="text-emerald-400 font-black text-xs mt-0.5">{formatIDR(item.value)}</div>
+                                                                <span className="px-2 py-0.5 bg-slate-800 text-slate-300 rounded-md text-[10px] font-semibold border border-slate-700 mt-1 inline-block">
+                                                                    {item.category}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        {item.file && <div className="text-[11px] text-indigo-400 font-medium mt-1.5 ml-14">📄 Dokumen: {item.file}</div>}
+                                                    </td>
+                                                    <td className="py-4 px-6">
+                                                        <span className={`px-3 py-1.5 rounded-full text-xs font-black border shadow-sm ${getOwnershipBadge(item.ownership)}`}>
+                                                            {item.ownership}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-4 px-6 text-slate-300">
+                                                        <div className="font-bold text-white">{item.location || '-'}</div>
+                                                        <div className="text-xs text-slate-400 mt-0.5 max-w-xs">{item.notes}</div>
+                                                    </td>
+                                                    <td className="py-4 px-6 text-right space-x-2">
+                                                        <button onClick={() => handleOpenModal(item)} className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition shadow-sm">Edit</button>
+                                                        <button onClick={() => handleDelete(item.id)} className="px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl text-xs font-bold border border-rose-500/20 transition shadow-sm">Hapus</button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {filteredAssets.map(item => {
+                                const meta = getCategoryMeta(item.category);
+                                return (
+                                    <div key={item.id} className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 shadow-2xl flex flex-col justify-between hover:border-indigo-500/50 transition">
+                                        <div>
+                                            <div className="flex justify-between items-start gap-2 mb-4">
+                                                <div className="flex items-center gap-2.5">
+                                                    <span className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xl ${meta.bg} border ${meta.border} shadow-md`}>
+                                                        {meta.icon}
+                                                    </span>
+                                                    <span className="px-3 py-1 bg-slate-800 text-slate-300 rounded-xl text-xs font-bold border border-slate-700">{item.category}</span>
+                                                </div>
+                                                <span className={`px-3 py-1 rounded-full text-xs font-black border shadow-sm ${getOwnershipBadge(item.ownership)}`}>{item.ownership}</span>
+                                            </div>
+                                            <h3 className="text-base font-black text-white">{item.name}</h3>
+                                            <div className="text-xl font-black text-emerald-400 mt-1">{formatIDR(item.value)}</div>
+                                            <div className="mt-4 pt-4 border-t border-slate-800/80 space-y-1.5 text-xs text-slate-300">
+                                                <div>📍 <strong className="text-white font-bold">Lokasi:</strong> {item.location || '-'}</div>
+                                                <div>📝 <strong className="text-white font-bold">Catatan:</strong> {item.notes || '-'}</div>
+                                                {item.file && <div className="text-indigo-400 font-semibold">📄 {item.file}</div>}
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-end gap-2.5 mt-6 pt-4 border-t border-slate-800/80">
+                                            <button onClick={() => handleOpenModal(item)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition">Edit</button>
+                                            <button onClick={() => handleDelete(item.id)} className="px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl text-xs font-bold border border-rose-500/20 transition">Hapus</button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
 
                     {/* Modal Add/Edit */}
                     {isModalOpen && (
-                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                            <div className="bg-white rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+                        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+                            <div className="bg-slate-900 border border-indigo-500/30 rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
                                 <div className="flex justify-between items-center mb-6">
-                                    <h2 className="text-xl font-bold text-slate-900">
-                                        {editingAsset ? 'Edit Aset' : 'Tambah Aset Baru'}
-                                    </h2>
-                                    <button 
-                                        onClick={() => setIsModalOpen(false)}
-                                        className="text-slate-400 hover:text-slate-600 font-bold text-xl"
-                                    >
-                                        &times;
-                                    </button>
+                                    <h2 className="text-lg font-black text-white">{editingAsset ? '✏️ Edit Aset Keluarga' : '➕ Tambah Aset Baru'}</h2>
+                                    <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white font-black text-2xl">&times;</button>
                                 </div>
 
-                                <form onSubmit={handleSave} className="space-y-4">
+                                <form onSubmit={handleSave} className="space-y-4 text-xs">
                                     <div>
-                                        <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Nama Aset</label>
-                                        <input 
-                                            type="text"
-                                            required
-                                            placeholder="Contoh: Toyota Voxy / Tanah Osaka"
-                                            value={formData.name}
-                                            onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                        />
+                                        <label className="block font-black text-slate-300 uppercase mb-1">Nama Aset</label>
+                                        <input type="text" required placeholder="Contoh: Toyota Voxy / Rumah Takatsuki" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Kategori</label>
-                                            <select 
-                                                value={formData.category}
-                                                onChange={(e) => setFormData({...formData, category: e.target.value})}
-                                                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                            >
-                                                <option value="Properti">Properti</option>
-                                                <option value="Kendaraan">Kendaraan</option>
-                                                <option value="Rekening Bank">Rekening Bank</option>
-                                                <option value="Investasi">Investasi</option>
-                                                <option value="Logam Mulia">Logam Mulia</option>
+                                            <label className="block font-black text-slate-300 uppercase mb-1">Kategori</label>
+                                            <select value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                                <option value="Properti">🏠 Properti</option>
+                                                <option value="Kendaraan">🚗 Kendaraan</option>
+                                                <option value="Rekening Bank">🏦 Rekening Bank</option>
+                                                <option value="Investasi">📈 Investasi</option>
+                                                <option value="Logam Mulia">🥇 Logam Mulia</option>
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Kepemilikan</label>
-                                            <select 
-                                                value={formData.ownership}
-                                                onChange={(e) => setFormData({...formData, ownership: e.target.value})}
-                                                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                            >
-                                                <option value="Suami">Suami</option>
-                                                <option value="Istri">Istri</option>
-                                                <option value="Bersama">Bersama</option>
-                                                <option value="Anak">Anak</option>
+                                            <label className="block font-black text-slate-300 uppercase mb-1">Kepemilikan</label>
+                                            <select value={formData.ownership} onChange={(e) => setFormData({...formData, ownership: e.target.value})} className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                                <option value="Suami">👨‍💼 Suami (Novan)</option>
+                                                <option value="Istri">👩‍💼 Istri (Lira)</option>
+                                                <option value="Bersama">💍 Bersama (Suami/Istri)</option>
+                                                <option value="Anak">👶 Anak (Zayuna)</option>
                                             </select>
                                         </div>
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Estimasi Nilai (IDR / JPY)</label>
-                                        <input 
-                                            type="number"
-                                            required
-                                            placeholder="Contoh: 150000000"
-                                            value={formData.value}
-                                            onChange={(e) => setFormData({...formData, value: e.target.value})}
-                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                        />
+                                        <label className="block font-black text-slate-300 uppercase mb-1">Estimasi Nilai (IDR)</label>
+                                        <input type="number" required placeholder="Contoh: 150000000" value={formData.value} onChange={(e) => setFormData({...formData, value: e.target.value})} className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Lokasi / Bank</label>
-                                        <input 
-                                            type="text"
-                                            placeholder="Contoh: Mizuho Bank / Garasi"
-                                            value={formData.location}
-                                            onChange={(e) => setFormData({...formData, location: e.target.value})}
-                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                        />
+                                        <label className="block font-black text-slate-300 uppercase mb-1">Lokasi / Bank</label>
+                                        <input type="text" placeholder="Contoh: Mizuho Bank / Takatsuki" value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Catatan / Deskripsi</label>
-                                        <textarea 
-                                            rows="2"
-                                            placeholder="Nomor polis, nomor BPKB, dll."
-                                            value={formData.notes}
-                                            onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                        ></textarea>
+                                        <label className="block font-black text-slate-300 uppercase mb-1">Catatan / Deskripsi</label>
+                                        <textarea rows="2" placeholder="Nomor BPKB / Sertifikat" value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-2xl text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Unggah Dokumen (Sertifikat / BPKB)</label>
-                                        <input 
-                                            type="file"
-                                            onChange={(e) => setFormData({...formData, file: e.target.files[0] ? e.target.files[0].name : formData.file})}
-                                            className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                                        />
-                                        {formData.file && <p className="text-xs text-slate-500 mt-1">File terpilih: {typeof formData.file === 'string' ? formData.file : formData.file.name}</p>}
+                                        <label className="block font-black text-slate-300 uppercase mb-1">File Dokumen (Sertifikat / BPKB)</label>
+                                        <input type="file" onChange={(e) => setFormData({...formData, file: e.target.files[0] ? e.target.files[0].name : formData.file})} className="w-full text-slate-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer" />
                                     </div>
 
                                     <div className="flex justify-end gap-3 pt-4">
-                                        <button 
-                                            type="button"
-                                            onClick={() => setIsModalOpen(false)}
-                                            className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium transition"
-                                        >
-                                            Batal
-                                        </button>
-                                        <button 
-                                            type="submit"
-                                            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium shadow-lg transition"
-                                        >
-                                            Simpan Aset
-                                        </button>
+                                        <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-2xl font-black transition">Batal</button>
+                                        <button type="submit" className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black shadow-lg shadow-indigo-600/40 transition">Simpan Aset</button>
                                     </div>
                                 </form>
                             </div>
