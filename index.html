@@ -3,576 +3,530 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Family Legacy Vault - Manajemen Aset & Keuangan Keluarga</title>
-    <!-- Custom Favicon / Shortcut Icon Keren (Bukan Bola Dunia) -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React & ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel for JSX -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-</head>
-<body class="bg-slate-950 text-slate-100 antialiased min-h-screen transition-colors duration-300">
-    <div id="root"></div>
-
-    <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
-
-        function App() {
-            const [isDarkMode, setIsDarkMode] = useState(() => {
-                const saved = localStorage.getItem('family_vault_dark');
-                return saved ? JSON.parse(saved) : true;
-            });
-
-            useEffect(() => {
-                localStorage.setItem('family_vault_dark', JSON.stringify(isDarkMode));
-                if (isDarkMode) {
-                    document.body.className = "bg-slate-950 text-slate-100 antialiased min-h-screen transition-colors duration-300";
-                } else {
-                    document.body.className = "bg-slate-100 text-slate-900 antialiased min-h-screen transition-colors duration-300";
-                }
-            }, [isDarkMode]);
-
-            // State Aset
-            const [assets, setAssets] = useState(() => {
-                const saved = localStorage.getItem('family_vault_assets_v6');
-                if (saved) { try { return JSON.parse(saved); } catch (e) {} }
-                return [
-                    { id: 1, name: "Rumah Tinggal Takatsuki", category: "Properti", value: 3500000000, ownership: "Bersama", location: "Osaka", notes: "Sertifikat utama", zakatEligible: false },
-                    { id: 2, name: "Tanah Kosong Osaka", category: "Tanah", value: 1200000000, ownership: "Bersama", location: "Takatsuki", notes: "Investasi", zakatEligible: false },
-                    { id: 3, name: "Toyota Voxy Hybrid 2015", category: "Kendaraan", value: 285000000, ownership: "Bersama", location: "Garasi", notes: "BPKB aktif", zakatEligible: false },
-                    { id: 4, name: "Tabungan Mizuho Bank", category: "Rekening Bank", value: 125000000, ownership: "Suami", location: "Mizuho Takatsuki", notes: "Rekening gaji Novan", zakatEligible: true },
-                    { id: 5, name: "Logam Mulia Antam 50gr", category: "Barang Berharga Lainnya", value: 65000000, ownership: "Istri", location: "Brankas", notes: "Emas Lira", zakatEligible: true },
-                    { id: 6, name: "Tabungan Anak Zayuna", category: "Rekening Bank", value: 45000000, ownership: "Anak", location: "JP Post", notes: "Tabungan masa depan", zakatEligible: false }
-                ];
-            });
-
-            // State Hutang
-            const [debts, setDebts] = useState(() => {
-                const saved = localStorage.getItem('family_vault_debts_v2');
-                if (saved) { try { return JSON.parse(saved); } catch (e) {} }
-                return [
-                    { id: 1, name: "Pinjaman Usaha / Pribadi", owner: "Suami", amount: 15000000, dueDate: "2026-12-31" },
-                    { id: 2, name: "Cicilan Kartu Kredit / Lainnya", owner: "Istri", amount: 5000000, dueDate: "2026-11-15" },
-                    { id: 3, name: "KPR Rumah Utama", owner: "Bersama", amount: 150000000, dueDate: "2030-01-01" },
-                    { id: 4, name: "Tabungan / Amanah Anak", owner: "Anak", amount: 0, dueDate: "N/A" }
-                ];
-            });
-
-            const [zakatDeadlines, setZakatDeadlines] = useState({
-                Suami: "2026-1 Ramadan",
-                Istri: "2026-1 Ramadan",
-                Bersama: "2026-1 Ramadan",
-                Anak: "N/A"
-            });
-
-            const [mainTab, setMainTab] = useState("assets");
-            const [filterCategory, setFilterCategory] = useState("All");
-            const [filterOwnership, setFilterOwnership] = useState("All");
-            const [searchQuery, setSearchQuery] = useState("");
-            const [isPrivacyMasked, setIsPrivacyMasked] = useState(false);
-            const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-            const [isModalOpen, setIsModalOpen] = useState(false);
-            const [editingAsset, setEditingAsset] = useState(null);
-            const [formData, setFormData] = useState({ name: "", category: "Properti", value: "", ownership: "Suami", location: "", notes: "", zakatEligible: false });
-
-            useEffect(() => { localStorage.setItem('family_vault_assets_v6', JSON.stringify(assets)); }, [assets]);
-            useEffect(() => { localStorage.setItem('family_vault_debts_v2', JSON.stringify(debts)); }, [debts]);
-
-            const categories = ["All", "Properti", "Tanah", "Kendaraan", "Rekening Bank", "Investasi", "Logam Mulia", "Peralatan", "Elektronik", "Barang Berharga Lainnya"];
-
-            const getCategoryMeta = (cat) => {
-                switch(cat) {
-                    case 'Properti': return { icon: '🏠', bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/30' };
-                    case 'Tanah': return { icon: '🌍', bg: 'bg-amber-600/10', text: 'text-amber-400', border: 'border-amber-600/30' };
-                    case 'Kendaraan': return { icon: '🚗', bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30' };
-                    case 'Rekening Bank': return { icon: '🏦', bg: 'bg-indigo-500/10', text: 'text-indigo-400', border: 'border-indigo-500/30' };
-                    case 'Investasi': return { icon: '📈', bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/30' };
-                    case 'Logam Mulia': case 'Barang Berharga Lainnya': return { icon: '🥇', bg: 'bg-yellow-500/10', text: 'text-yellow-400', border: 'border-yellow-500/30' };
-                    case 'Peralatan': return { icon: '🛠️', bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/30' };
-                    case 'Elektronik': return { icon: '💻', bg: 'bg-cyan-500/10', text: 'text-cyan-400', border: 'border-cyan-500/30' };
-                    default: return { icon: '💎', bg: 'bg-slate-500/10', text: 'text-slate-300', border: 'border-slate-500/30' };
-                }
-            };
-
-            const formatIDR = (val) => {
-                if (isPrivacyMasked) return "Rp *******";
-                return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
-            };
-
-            const debtSummary = useMemo(() => {
-                const res = { Suami: 0, Istri: 0, Bersama: 0, Anak: 0 };
-                debts.forEach(d => { if (res[d.owner] !== undefined) res[d.owner] += Number(d.amount || 0); });
-                return res;
-            }, [debts]);
-
-            const zakatSummary = useMemo(() => {
-                const wealth = { Suami: 0, Istri: 0, Bersama: 0, Anak: 0 };
-                assets.forEach(a => {
-                    if (a.zakatEligible && wealth[a.ownership] !== undefined) {
-                        wealth[a.ownership] += Number(a.value || 0);
-                    }
-                });
-                return {
-                    Suami: { wealth: wealth.Suami, zakat: wealth.Suami * 0.0025 },
-                    Istri: { wealth: wealth.Istri, zakat: wealth.Istri * 0.0025 },
-                    Bersama: { wealth: wealth.Bersama, zakat: wealth.Bersama * 0.0025 },
-                    Anak: { wealth: wealth.Anak, zakat: wealth.Anak * 0.0025 }
-                };
-            }, [assets]);
-
-            const ownershipSummary = useMemo(() => {
-                const summary = { Suami: 0, Istri: 0, Bersama: 0, Anak: 0 };
-                assets.forEach(item => { if (summary[item.ownership] !== undefined) summary[item.ownership] += Number(item.value || 0); });
-                return summary;
-            }, [assets]);
-
-            const totalNetWorth = useMemo(() => assets.reduce((s, a) => s + Number(a.value || 0), 0), [assets]);
-
-            const filteredAssets = useMemo(() => {
-                return assets.filter(item => {
-                    const matchesCategory = filterCategory === "All" || item.category === filterCategory;
-                    const matchesOwnership = filterOwnership === "All" || item.ownership === filterOwnership;
-                    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || (item.location && item.location.toLowerCase().includes(searchQuery.toLowerCase()));
-                    return matchesCategory && matchesOwnership && matchesSearch;
-                });
-            }, [assets, filterCategory, filterOwnership, searchQuery]);
-
-            return (
-                <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
-                    {/* Header Utama */}
-                    <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
-                        <div>
-                            <div className="flex items-center gap-2 text-xs font-black tracking-widest text-indigo-400 uppercase">
-                                <span>🛡️ FAMILY LEGACY VAULT</span>
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                <span>MODE ORANG TUA & KELUARGA</span>
-                            </div>
-                            <h1 className="text-2xl md:text-3xl font-black text-white mt-1">Manajemen Kekayaan, Hutang & Zakat Mall</h1>
-                            <p className="text-sm font-medium text-slate-400 mt-0.5">Pusat Informasi Portofolio, Wasiat, Zakat & Hutang (Novan, Lira, Zayuna)</p>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-                            <button onClick={() => setIsPrivacyMasked(!isPrivacyMasked)} className="px-5 py-3 rounded-2xl text-sm font-black border transition shadow-sm bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700">
-                                {isPrivacyMasked ? '👁️ Tampilkan Nominal' : '🔒 Sembunyikan Nominal'}
-                            </button>
-                            <button onClick={() => setIsSettingsOpen(true)} className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-black transition shadow-lg flex items-center gap-2">
-                                ⚙️ Pengaturan
-                            </button>
-                        </div>
-                    </header>
-
-                    {/* MENU UTAMA BERJEJER */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
-                        <button onClick={() => setMainTab("assets")} className={`p-4 rounded-2xl text-center font-black text-sm transition shadow-md border ${mainTab === 'assets' ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-slate-900 text-slate-200 border-slate-800'}`}>
-                            💎 <div className="mt-1">Aset & Kekayaan</div>
-                        </button>
-                        <button onClick={() => setMainTab("debts")} className={`p-4 rounded-2xl text-center font-black text-sm transition shadow-md border ${mainTab === 'debts' ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-slate-900 text-slate-200 border-slate-800'}`}>
-                            💳 <div className="mt-1">Menu Hutang</div>
-                        </button>
-                        <button onClick={() => setMainTab("zakat")} className={`p-4 rounded-2xl text-center font-black text-sm transition shadow-md border ${mainTab === 'zakat' ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-slate-900 text-slate-200 border-slate-800'}`}>
-                            🌙 <div className="mt-1">Zakat Mall</div>
-                        </button>
-                        <button onClick={() => setMainTab("wills")} className={`p-4 rounded-2xl text-center font-black text-sm transition shadow-md border ${mainTab === 'wills' ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-slate-900 text-slate-200 border-slate-800'}`}>
-                            📜 <div className="mt-1">Wasiat</div>
-                        </button>
-                        <button onClick={() => setMainTab("files")} className={`p-4 rounded-2xl text-center font-black text-sm transition shadow-md border ${mainTab === 'files' ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-slate-900 text-slate-200 border-slate-800'}`}>
-                            📁 <div className="mt-1">Folder File</div>
-                        </button>
-                        <button onClick={() => setMainTab("notes")} className={`p-4 rounded-2xl text-center font-black text-sm transition shadow-md border ${mainTab === 'notes' ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-slate-900 text-slate-200 border-slate-800'}`}>
-                            📝 <div className="mt-1">Catatan</div>
-                        </button>
-                    </div>
-
-                    {/* ========================================================= */}
-                    {/* TOTAL ESTIMASI NET WORTH KELUARGA (PERSIS SEPERTI GAMBAR) */}
-                    {/* ========================================================= */}
-                    <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-slate-900 text-white rounded-3xl p-6 md:p-8 shadow-2xl border border-slate-800 mb-8 relative overflow-hidden">
-                        <div className="absolute top-4 right-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            Real-time Update
-                        </div>
-                        <div className="text-xs font-black uppercase text-indigo-300 tracking-wider mb-1">TOTAL ESTIMASI NET WORTH KELUARGA</div>
-                        <div className="text-3xl md:text-5xl font-black mt-1 mb-2 tracking-tight">{formatIDR(totalNetWorth)}</div>
-                        <p className="text-xs md:text-sm text-slate-400 font-medium mb-6">Terakumulasi dari {assets.length} instrumen aset keluarga terdaftar dan terverifikasi.</p>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-slate-800/80">
-                            <div className="bg-slate-900/90 p-4 rounded-2xl border border-slate-800 shadow-md">
-                                <div className="text-xs font-bold text-slate-400 flex items-center gap-1.5"><span>👨‍💼</span> Suami (Novan)</div>
-                                <div className="text-lg md:text-xl font-black text-emerald-400 mt-1">{formatIDR(ownershipSummary.Suami)}</div>
-                            </div>
-                            <div className="bg-slate-900/90 p-4 rounded-2xl border border-slate-800 shadow-md">
-                                <div className="text-xs font-bold text-slate-400 flex items-center gap-1.5"><span>👩‍💼</span> Istri (Lira)</div>
-                                <div className="text-lg md:text-xl font-black text-purple-400 mt-1">{formatIDR(ownershipSummary.Istri)}</div>
-                            </div>
-                            <div className="bg-slate-900/90 p-4 rounded-2xl border border-slate-800 shadow-md">
-                                <div className="text-xs font-bold text-slate-400 flex items-center gap-1.5"><span>💍</span> Bersama</div>
-                                <div className="text-lg md:text-xl font-black text-blue-400 mt-1">{formatIDR(ownershipSummary.Bersama)}</div>
-                            </div>
-                            <div className="bg-slate-900/90 p-4 rounded-2xl border border-slate-800 shadow-md">
-                                <div className="text-xs font-bold text-slate-400 flex items-center gap-1.5"><span>👶</span> Anak (Zayuna)</div>
-                                <div className="text-lg md:text-xl font-black text-amber-400 mt-1">{formatIDR(ownershipSummary.Anak)}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* ========================================================= */}
-                    {/* MENU KHUSUS HUTANG BERJEJER 4 KOTAK */}
-                    {/* ========================================================= */}
-                    <div className="mb-8">
-                        <div className="text-sm font-black uppercase text-slate-400 mb-3 flex items-center gap-2">
-                            <span>💳 RINCIAN HUTANG KELUARGA (Wajib Bayar Sampai Deadline):</span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div className="bg-slate-900 p-5 rounded-3xl border border-rose-500/30 shadow-lg">
-                                <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                                    <span>👨‍💼</span> <span>HUTANG SUAMI (NOVAN)</span>
-                                </div>
-                                <div className="text-xl font-black text-rose-400 mt-2">{formatIDR(debtSummary.Suami)}</div>
-                                <div className="text-xs font-bold text-slate-400 mt-2 pt-2 border-t border-slate-800 flex justify-between">
-                                    <span>Deadline:</span> <span className="text-amber-400">31 Des 2026</span>
-                                </div>
-                            </div>
-                            <div className="bg-slate-900 p-5 rounded-3xl border border-rose-500/30 shadow-lg">
-                                <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                                    <span>👩‍💼</span> <span>HUTANG ISTRI (LIRA)</span>
-                                </div>
-                                <div className="text-xl font-black text-rose-400 mt-2">{formatIDR(debtSummary.Istri)}</div>
-                                <div className="text-xs font-bold text-slate-400 mt-2 pt-2 border-t border-slate-800 flex justify-between">
-                                    <span>Deadline:</span> <span className="text-amber-400">15 Nov 2026</span>
-                                </div>
-                            </div>
-                            <div className="bg-slate-900 p-5 rounded-3xl border border-rose-500/30 shadow-lg">
-                                <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                                    <span>💍</span> <span>HUTANG BERSAMA</span>
-                                </div>
-                                <div className="text-xl font-black text-rose-400 mt-2">{formatIDR(debtSummary.Bersama)}</div>
-                                <div className="text-xs font-bold text-slate-400 mt-2 pt-2 border-t border-slate-800 flex justify-between">
-                                    <span>Deadline:</span> <span className="text-amber-400">Jangka Panjang</span>
-                                </div>
-                            </div>
-                            <div className="bg-slate-900 p-5 rounded-3xl border border-rose-500/30 shadow-lg">
-                                <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                                    <span>👶</span> <span>HUTANG ANAK (ZAYUNA)</span>
-                                </div>
-                                <div className="text-xl font-black text-emerald-400 mt-2">{formatIDR(debtSummary.Anak)}</div>
-                                <div className="text-xs font-bold text-slate-400 mt-2 pt-2 border-t border-slate-800 flex justify-between">
-                                    <span>Deadline:</span> <span className="text-emerald-400">Aman (Tidak Ada)</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* ========================================================= */}
-                    {/* MENU KHUSUS ZAKAT MALL BERJEJER 4 KOTAK */}
-                    {/* ========================================================= */}
-                    <div className="mb-8">
-                        <div className="text-sm font-black uppercase text-slate-400 mb-3 flex items-center gap-2">
-                            <span>🌙 KALKULATOR ZAKAT MALL OTOMATIS (0,25% dari Emas, Tabungan & Aset Haul 1 Tahun):</span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div className="bg-slate-900 p-5 rounded-3xl border border-emerald-500/30 shadow-lg">
-                                <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                                    <span>👨‍💼</span> <span>ZAKAT MALL (NOVAN)</span>
-                                </div>
-                                <div className="text-xl font-black text-emerald-400 mt-2">{formatIDR(zakatSummary.Suami.zakat)}</div>
-                                <div className="text-xs text-slate-400 mt-1">Dari aset likuid: {formatIDR(zakatSummary.Suami.wealth)}</div>
-                                <div className="text-xs font-bold text-slate-400 mt-2 pt-2 border-t border-slate-800 flex justify-between">
-                                    <span>Haul/Deadline:</span> <span className="text-indigo-400 font-bold">1 Ramadan</span>
-                                </div>
-                            </div>
-                            <div className="bg-slate-900 p-5 rounded-3xl border border-emerald-500/30 shadow-lg">
-                                <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                                    <span>👩‍💼</span> <span>ZAKAT MALL (LIRA)</span>
-                                </div>
-                                <div className="text-xl font-black text-emerald-400 mt-2">{formatIDR(zakatSummary.Istri.zakat)}</div>
-                                <div className="text-xs text-slate-400 mt-1">Dari aset likuid: {formatIDR(zakatSummary.Istri.wealth)}</div>
-                                <div className="text-xs font-bold text-slate-400 mt-2 pt-2 border-t border-slate-800 flex justify-between">
-                                    <span>Haul/Deadline:</span> <span className="text-indigo-400 font-bold">1 Ramadan</span>
-                                </div>
-                            </div>
-                            <div className="bg-slate-900 p-5 rounded-3xl border border-emerald-500/30 shadow-lg">
-                                <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                                    <span>💍</span> <span>ZAKAT MALL (BERSAMA)</span>
-                                </div>
-                                <div className="text-xl font-black text-emerald-400 mt-2">{formatIDR(zakatSummary.Bersama.zakat)}</div>
-                                <div className="text-xs text-slate-400 mt-1">Dari aset likuid: {formatIDR(zakatSummary.Bersama.wealth)}</div>
-                                <div className="text-xs font-bold text-slate-400 mt-2 pt-2 border-t border-slate-800 flex justify-between">
-                                    <span>Haul/Deadline:</span> <span className="text-indigo-400 font-bold">1 Ramadan</span>
-                                </div>
-                            </div>
-                            <div className="bg-slate-900 p-5 rounded-3xl border border-emerald-500/30 shadow-lg">
-                                <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                                    <span>👶</span> <span>ZAKAT MALL (ZAYUNA)</span>
-                                </div>
-                                <div className="text-xl font-black text-emerald-400 mt-2">{formatIDR(zakatSummary.Anak.zakat)}</div>
-                                <div className="text-xs text-slate-400 mt-1">Belum memenuhi nisab/haul</div>
-                                <div className="text-xs font-bold text-slate-400 mt-2 pt-2 border-t border-slate-800 flex justify-between">
-                                    <span>Haul/Deadline:</span> <span className="text-indigo-400 font-bold">N/A</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* KONTEN UTAMA BERDASARKAN TAB */}
-                    {mainTab === 'assets' && (
-                        <div>
-                            {/* Kategori Berjejer */}
-                            <div className="mb-6 bg-slate-900 p-4 rounded-3xl border border-slate-800 shadow-sm">
-                                <div className="text-xs font-black uppercase text-slate-400 mb-3">PILIH KATEGORI ASET:</div>
-                                <div className="flex flex-wrap gap-2">
-                                    {categories.map(cat => {
-                                        const meta = getCategoryMeta(cat);
-                                        return (
-                                            <button key={cat} onClick={() => setFilterCategory(cat)} className={`px-4 py-2.5 rounded-xl text-xs font-black transition border ${filterCategory === cat ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-slate-800 text-slate-300 border-slate-700'}`}>
-                                                <span>{cat === 'All' ? '📂' : meta.icon}</span> {cat}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-black text-white">Daftar Rincian Aset (Centang untuk Objek Zakat Mall Haul 1 Tahun)</h3>
-                                <button onClick={() => { setEditingAsset(null); setFormData({name:"", category:"Properti", value:"", ownership:"Suami", location:"", notes:"", zakatEligible:false}); setIsModalOpen(true); }} className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-2xl shadow-md">
-                                    ➕ Tambah Aset Baru
-                                </button>
-                            </div>
-
-                            {/* Tabel Aset */}
-                            <div className="bg-slate-900 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left border-collapse">
-                                        <thead>
-                                            <tr className="bg-slate-950 border-b border-slate-800 text-xs font-black text-slate-400 uppercase">
-                                                <th className="py-4 px-6">Nama Aset & Nilai</th>
-                                                <th className="py-4 px-6">Kepemilikan</th>
-                                                <th className="py-4 px-6">Masuk Objek Zakat (0,25%)</th>
-                                                <th className="py-4 px-6 text-right">Aksi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-800 text-sm">
-                                            {filteredAssets.map(item => {
-                                                const meta = getCategoryMeta(item.category);
-                                                return (
-                                                    <tr key={item.id} className="hover:bg-slate-800/50">
-                                                        <td className="py-4 px-6">
-                                                            <div className="flex items-center gap-3">
-                                                                <span className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg ${meta.bg} border ${meta.border}`}>{meta.icon}</span>
-                                                                <div>
-                                                                    <div className="font-black text-base text-white">{item.name}</div>
-                                                                    <div className="text-emerald-400 font-black text-base mt-0.5">{formatIDR(item.value)}</div>
-                                                                    <span className="text-xs font-bold text-slate-400">[{item.category}] • {item.location}</span>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-4 px-6">
-                                                            <span className="px-3 py-1 rounded-full text-xs font-black bg-slate-800 border border-slate-700 text-slate-200">{item.ownership}</span>
-                                                        </td>
-                                                        <td className="py-4 px-6">
-                                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                                <input type="checkbox" checked={item.zakatEligible} onChange={(e) => {
-                                                                    setAssets(assets.map(a => a.id === item.id ? {...a, zakatEligible: e.target.checked} : a));
-                                                                }} className="w-5 h-5 text-indigo-600 rounded" />
-                                                                <span className="text-xs font-bold text-slate-300">{item.zakatEligible ? '✅ Objek Zakat (Haul)' : '❌ Tidak Dihitung Zakat'}</span>
-                                                            </label>
-                                                        </td>
-                                                        <td className="py-4 px-6 text-right space-x-2">
-                                                            <button onClick={() => { setEditingAsset(item); setFormData(item); setIsModalOpen(true); }} className="px-3 py-1.5 bg-slate-800 rounded-xl font-bold text-xs text-slate-200">Edit</button>
-                                                            <button onClick={() => setAssets(assets.filter(a => a.id !== item.id))} className="px-3 py-1.5 bg-rose-500/10 text-rose-400 rounded-xl font-bold text-xs">Hapus</button>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {mainTab === 'debts' && (
-                        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-xl font-black text-white">💳 Manajemen & Tambah Hutang Keluarga</h3>
-                                <button onClick={() => {
-                                    const name = prompt("Nama Hutang (Contoh: Cicilan Bank / Pinjaman):");
-                                    const amount = prompt("Nominal Hutang (IDR):");
-                                    const dueDate = prompt("Wajib Bayar Sampai (YYYY-MM-DD):");
-                                    const owner = prompt("Pemilik Hutang (Suami / Istri / Bersama / Anak):");
-                                    if(name && amount) {
-                                        setDebts([...debts, { id: Date.now(), name, amount: Number(amount), dueDate: dueDate || "2026-12-31", owner: owner || "Suami" }]);
-                                    }
-                                }} className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-black">➕ Tambah Hutang Baru</button>
-                            </div>
-                            <div className="space-y-4">
-                                {debts.map(d => (
-                                    <div key={d.id} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                        <div>
-                                            <div className="text-base font-black text-white">{d.name} <span className="text-xs px-2 py-0.5 bg-slate-800 rounded ml-2 text-slate-300">[{d.owner}]</span></div>
-                                            <div className="text-rose-400 font-black text-lg">{formatIDR(d.amount)}</div>
-                                            <div className="text-xs font-bold text-amber-400 mt-1">⏰ Wajib Bayar Sampai: {d.dueDate}</div>
-                                        </div>
-                                        <button onClick={() => setDebts(debts.filter(x => x.id !== d.id))} className="px-3 py-1.5 bg-rose-500/10 text-rose-400 rounded-xl font-bold text-xs">Hapus</button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {mainTab === 'zakat' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
-                                <h3 className="text-xl font-black text-emerald-400 mb-2">🌙 KETERANGAN ZAKAT MALL</h3>
-                                <p className="text-sm text-slate-400 leading-relaxed">
-                                    Zakat mall dihitung secara otomatis sebesar **0,25% (1/40)** dari total aset likuid (emas, tabungan, dll.) yang telah dicentang sebagai objek zakat dan telah mencapai haul (mengendap selama 1 tahun hijriyah). Anda dapat mengelola objek zakat langsung pada menu **Aset & Kekayaan**.
-                                </p>
-                            </div>
-                            <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
-                                <h3 className="text-xl font-black text-indigo-400 mb-2">📅 PENGATURAN DEADLINE HAUL</h3>
-                                <div className="space-y-3 mt-4 text-sm font-bold text-slate-300">
-                                    <div className="flex justify-between items-center p-3 bg-slate-950 rounded-xl border border-slate-800">
-                                        <span>Haul Zakat Suami:</span>
-                                        <input type="text" value={zakatDeadlines.Suami} onChange={e=>setZakatDeadlines({...zakatDeadlines, Suami: e.target.value})} className="px-3 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white" />
-                                    </div>
-                                    <div className="flex justify-between items-center p-3 bg-slate-950 rounded-xl border border-slate-800">
-                                        <span>Haul Zakat Istri:</span>
-                                        <input type="text" value={zakatDeadlines.Istri} onChange={e=>setZakatDeadlines({...zakatDeadlines, Istri: e.target.value})} className="px-3 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {mainTab === 'wills' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
-                                <h3 className="text-lg font-black text-indigo-400 mb-3">📜 WASIAT NOVAN</h3>
-                                <textarea rows="6" defaultValue="1. Seluruh harta bersama diurus untuk kesejahteraan anak (Zayuna Safiya).&#10;2. Wakafkan sebagian harta untuk amal jariyah." className="w-full p-4 rounded-2xl bg-slate-950 border border-slate-800 text-sm font-medium text-white"></textarea>
-                            </div>
-                            <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
-                                <h3 className="text-lg font-black text-purple-400 mb-3">📜 WASIAT LIRA</h3>
-                                <textarea rows="6" defaultValue="1. Pendidikan Zayuna Safiya adalah prioritas utama.&#10;2. Jaga silaturahmi keluarga besar." className="w-full p-4 rounded-2xl bg-slate-950 border border-slate-800 text-sm font-medium text-white"></textarea>
-                            </div>
-                        </div>
-                    )}
-
-                    {mainTab === 'files' && (
-                        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
-                            <h3 className="text-xl font-black mb-4 text-white">📁 Folder Penting File Dokumen Keluarga</h3>
-                            <div className="space-y-3">
-                                <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 flex justify-between items-center">
-                                    <div className="font-bold text-base text-white">📄 Sertifikat Rumah Takatsuki.pdf <span className="text-xs text-slate-400 font-normal">(Bersama)</span></div>
-                                    <span className="text-xs px-3 py-1 bg-indigo-500/10 text-indigo-400 font-black rounded-lg">Properti</span>
-                                </div>
-                                <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800 flex justify-between items-center">
-                                    <div className="font-bold text-base text-white">📄 Paspor & Akta Zayuna Safiya.pdf <span className="text-xs text-slate-400 font-normal">(Anak)</span></div>
-                                    <span className="text-xs px-3 py-1 bg-amber-500/10 text-amber-400 font-black rounded-lg">Pribadi</span>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {mainTab === 'notes' && (
-                        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
-                            <h3 className="text-xl font-black mb-4 text-white">📝 Catatan Penting Keluarga</h3>
-                            <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800">
-                                <h4 className="font-black text-base text-indigo-400">Nomor Polis Asuransi & Brankas</h4>
-                                <p className="text-sm mt-1 text-slate-300">Seluruh password brankas dan nomor polis tersimpan aman di catatan fisik rumah utama.</p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* MODAL PENGATURAN */}
-                    {isSettingsOpen && (
-                        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                            <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl text-white">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-xl font-black">⚙️ Pengaturan Aplikasi</h3>
-                                    <button onClick={() => setIsSettingsOpen(false)} className="text-2xl font-black">&times;</button>
-                                </div>
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-center p-4 bg-slate-950 rounded-2xl border border-slate-800">
-                                        <span className="font-bold text-base">Mode Tampilan</span>
-                                        <button onClick={() => setIsDarkMode(!isDarkMode)} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black shadow-md">
-                                            {isDarkMode ? '🌙 Mode Gelap' : '☀️ Mode Terang'}
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="mt-6 text-right">
-                                    <button onClick={() => setIsSettingsOpen(false)} className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-black text-sm">Tutup</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* MODAL TAMBAH ASET */}
-                    {isModalOpen && (
-                        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                            <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto text-white">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-xl font-black">{editingAsset ? '✏️ Edit Aset' : '➕ Tambah Aset Baru'}</h3>
-                                    <button onClick={() => setIsModalOpen(false)} className="text-2xl font-black">&times;</button>
-                                </div>
-                                <form onSubmit={(e) => {
-                                    e.preventDefault();
-                                    if(!formData.name || !formData.value) return;
-                                    if(editingAsset) {
-                                        setAssets(assets.map(a => a.id === editingAsset.id ? {...formData, id: a.id, value: Number(formData.value)} : a));
-                                    } else {
-                                        setAssets([{...formData, id: Date.now(), value: Number(formData.value)}, ...assets]);
-                                    }
-                                    setIsModalOpen(false);
-                                }} className="space-y-4 text-sm font-bold">
-                                    <div>
-                                        <label className="block mb-1 text-slate-300">Nama Aset:</label>
-                                        <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full p-3 rounded-2xl bg-slate-950 border border-slate-800 text-white" />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block mb-1 text-slate-300">Kategori:</label>
-                                            <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full p-3 rounded-2xl bg-slate-950 border border-slate-800 text-white">
-                                                {categories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block mb-1 text-slate-300">Kepemilikan:</label>
-                                            <select value={formData.ownership} onChange={e => setFormData({...formData, ownership: e.target.value})} className="w-full p-3 rounded-2xl bg-slate-950 border border-slate-800 text-white">
-                                                <option value="Suami">Suami (Novan)</option>
-                                                <option value="Istri">Istri (Lira)</option>
-                                                <option value="Bersama">Bersama</option>
-                                                <option value="Anak">Anak (Zayuna)</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block mb-1 text-slate-300">Nilai Estimasi (IDR):</label>
-                                        <input type="number" required value={formData.value} onChange={e => setFormData({...formData, value: e.target.value})} className="w-full p-3 rounded-2xl bg-slate-950 border border-slate-800 text-white" />
-                                    </div>
-                                    <div>
-                                        <label className="block mb-1 text-slate-300">Lokasi / Keterangan:</label>
-                                        <input type="text" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="w-full p-3 rounded-2xl bg-slate-950 border border-slate-800 text-white" />
-                                    </div>
-                                    <div className="flex items-center gap-2 pt-2">
-                                        <input type="checkbox" checked={formData.zakatEligible} onChange={e => setFormData({...formData, zakatEligible: e.target.checked})} className="w-5 h-5 text-indigo-600 rounded" />
-                                        <span className="text-slate-300">Masuk Objek Zakat Mall (0,25% Haul 1 Tahun)</span>
-                                    </div>
-                                    <div className="flex justify-end gap-3 pt-4">
-                                        <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 bg-slate-800 rounded-xl text-slate-300">Batal</button>
-                                        <button type="submit" className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl">Simpan</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
+    <title>Dashboard Finansial & Waris Keluarga</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* === TEMA LIGHT MODE YANG LEBIH JELAS === */
+        :root {
+            --bg-color: #f0f4f8;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --primary: #3b82f6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --purple: #8b5cf6;
         }
 
-        ReactDOM.render(<App />, document.getElementById('root'));
-    </script>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* === TIPOGRAFI NAMA (KAPITAL, BOLD, BESAR) === */
+        .nama-orang {
+            text-transform: uppercase;
+            font-weight: 900;
+            font-size: 1.15rem;
+            letter-spacing: 0.5px;
+        }
+
+        /* === GRID KARTU === */
+        .section-title {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: bold;
+            margin: 25px 0 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        /* Kartu Interaktif */
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            position: relative;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border-color: var(--primary);
+        }
+
+        /* Ikon Edit di Pojok Kartu */
+        .card .edit-icon {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            opacity: 0.5;
+            transition: 0.2s;
+        }
+        .card:hover .edit-icon { opacity: 1; color: var(--primary); }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .nominal {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .text-green { color: var(--success); }
+        .text-purple { color: var(--purple); }
+        .text-blue { color: var(--primary); }
+        .text-yellow { color: var(--warning); }
+        .text-red { color: var(--danger); }
+
+        .card-footer {
+            margin-top: 15px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* === MENU NAVIGASI (DIANTARA ZAKAT & KATEGORI) === */
+        .main-menus {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 30px 0;
+            padding: 15px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            border: 1px solid var(--border-color);
+        }
+
+        .menu-btn {
+            flex: 1;
+            min-width: 120px;
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .menu-btn i { font-size: 1.2rem; }
+        .menu-btn:hover, .menu-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Menu Kategori Pil */
+        .category-menus {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .cat-pill {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .cat-pill.active {
+            background: var(--purple);
+            color: white;
+            border-color: var(--purple);
+        }
+
+        /* === MODAL POP-UP (Rincian & Edit) === */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(3px);
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            width: 90%;
+            max-width: 600px;
+            border-radius: 15px;
+            padding: 25px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9rem;}
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        .btn-save {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        /* === CSS KALKULATOR WARIS === */
+        .waris-container { display: none; background: #fff; padding: 25px; border-radius: 12px; border: 1px solid var(--border-color); margin-top: 20px; }
+        .info-pemberitahuan { background-color: #e8f8f5; border-left: 4px solid #1abc9c; padding: 12px; border-radius: 4px; margin-bottom: 20px; font-size: 0.9rem; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9rem; }
+        th, td { border: 1px solid var(--border-color); padding: 10px; text-align: left; }
+        th { background-color: var(--bg-color); }
+        .dalil-text { font-size: 0.8rem; color: var(--text-muted); font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <!-- Bagian 1: ASET KEKAYAAN -->
+    <div class="section-title"><i class="fas fa-wallet"></i> Total Aset Kekayaan</div>
+    <div class="card-grid">
+        <div class="card" onclick="openDetailModal('Suami', 'Novan', '125.000.000', 'Aset Pribadi Suami')">
+            <i class="fas fa-edit edit-icon"></i>
+            <div class="card-header">👨 Suami (<span class="nama-orang">Novan</span>)</div>
+            <div class="nominal text-green">Rp 125.000.000</div>
+        </div>
+        <div class="card" onclick="openDetailModal('Istri', 'Lira', '65.000.000', 'Aset Pribadi Istri')">
+            <i class="fas fa-edit edit-icon"></i>
+            <div class="card-header">👩 Istri (<span class="nama-orang">Lira</span>)</div>
+            <div class="nominal text-purple">Rp 65.000.000</div>
+        </div>
+        <div class="card" onclick="openDetailModal('Bersama', 'Keluarga', '4.985.000.000', 'Aset Gabungan Gono-gini')">
+            <i class="fas fa-edit edit-icon"></i>
+            <div class="card-header">💍 Bersama</div>
+            <div class="nominal text-blue">Rp 4.985.000.000</div>
+        </div>
+        <div class="card" onclick="openDetailModal('Anak', 'Zayuna', '45.000.000', 'Tabungan Masa Depan Anak')">
+            <i class="fas fa-edit edit-icon"></i>
+            <div class="card-header">👶 Anak (<span class="nama-orang">Zayuna</span>)</div>
+            <div class="nominal text-yellow">Rp 45.000.000</div>
+        </div>
+    </div>
+
+    <!-- Bagian 2: HUTANG KELUARGA -->
+    <div class="section-title"><i class="fas fa-credit-card"></i> Rincian Hutang Keluarga (Wajib Bayar)</div>
+    <div class="card-grid">
+        <div class="card" onclick="openDetailModal('Hutang Suami', 'Novan', '15.000.000', 'Cicilan Pribadi')">
+            <i class="fas fa-edit edit-icon"></i>
+            <div class="card-header">👨 Hutang (<span class="nama-orang">Novan</span>)</div>
+            <div class="nominal text-red">Rp 15.000.000</div>
+            <div class="card-footer"><span>Deadline:</span> <strong>31 Des 2026</strong></div>
+        </div>
+        <div class="card" onclick="openDetailModal('Hutang Istri', 'Lira', '5.000.000', 'Paylater/Cicilan')">
+            <i class="fas fa-edit edit-icon"></i>
+            <div class="card-header">👩 Hutang (<span class="nama-orang">Lira</span>)</div>
+            <div class="nominal text-red">Rp 5.000.000</div>
+            <div class="card-footer"><span>Deadline:</span> <strong>15 Nov 2026</strong></div>
+        </div>
+        <div class="card" onclick="openDetailModal('Hutang Bersama', 'Keluarga', '150.000.000', 'KPR/Kredit Mobil')">
+            <i class="fas fa-edit edit-icon"></i>
+            <div class="card-header">💍 Hutang Bersama</div>
+            <div class="nominal text-red">Rp 150.000.000</div>
+            <div class="card-footer"><span>Deadline:</span> <strong>Jangka Panjang</strong></div>
+        </div>
+        <div class="card" onclick="openDetailModal('Hutang Anak', 'Zayuna', '0', 'Aman')">
+            <i class="fas fa-edit edit-icon"></i>
+            <div class="card-header">👶 Hutang (<span class="nama-orang">Zayuna</span>)</div>
+            <div class="nominal text-green">Rp 0</div>
+            <div class="card-footer"><span>Deadline:</span> <strong class="text-green">Aman (Tidak Ada)</strong></div>
+        </div>
+    </div>
+
+    <!-- Bagian 3: ZAKAT MAL -->
+    <div class="section-title"><i class="fas fa-moon"></i> Kalkulator Zakat Mal Otomatis (2,5% Dari Emas, Tabungan & Aset Haul 1 Tahun)</div>
+    <div class="card-grid">
+        <!-- 2.5% dari 125.000.000 adalah 3.125.000 -->
+        <div class="card" onclick="openDetailModal('Zakat', 'Novan', '3.125.000', 'Hitungan 2,5% dari Aset Likuid')">
+            <i class="fas fa-edit edit-icon"></i>
+            <div class="card-header">👨 Zakat Mal (<span class="nama-orang">Novan</span>)</div>
+            <div class="nominal text-green">Rp 3.125.000</div>
+            <div class="card-footer"><span>Dari aset likuid: Rp 125.000.000</span> <strong>1 Ramadan</strong></div>
+        </div>
+        <!-- 2.5% dari 65.000.000 adalah 1.625.000 -->
+        <div class="card" onclick="openDetailModal('Zakat', 'Lira', '1.625.000', 'Hitungan 2,5% dari Aset Likuid')">
+            <i class="fas fa-edit edit-icon"></i>
+            <div class="card-header">👩 Zakat Mal (<span class="nama-orang">Lira</span>)</div>
+            <div class="nominal text-green">Rp 1.625.000</div>
+            <div class="card-footer"><span>Dari aset likuid: Rp 65.000.000</span> <strong>1 Ramadan</strong></div>
+        </div>
+        <div class="card" onclick="openDetailModal('Zakat Bersama', 'Keluarga', '0', 'Belum Mencapai Nisab/Haul')">
+            <i class="fas fa-edit edit-icon"></i>
+            <div class="card-header">💍 Zakat Mal (Bersama)</div>
+            <div class="nominal text-green">Rp 0</div>
+            <div class="card-footer"><span>Dari aset likuid: Rp 0</span> <strong>1 Ramadan</strong></div>
+        </div>
+        <div class="card" onclick="openDetailModal('Zakat Anak', 'Zayuna', '0', 'Anak Belum Wajib/Belum Nisab')">
+            <i class="fas fa-edit edit-icon"></i>
+            <div class="card-header">👶 Zakat Mal (<span class="nama-orang">Zayuna</span>)</div>
+            <div class="nominal text-green">Rp 0</div>
+            <div class="card-footer"><span>Belum memenuhi nisab</span> <strong>N/A</strong></div>
+        </div>
+    </div>
+
+    <!-- Bagian 4: MENU UTAMA (Diposisikan di sini sesuai permintaan gambar 2 & 3) -->
+    <div class="main-menus">
+        <div class="menu-btn active" onclick="toggleSection('dashboard')"><i class="fas fa-gem"></i> Aset & Kekayaan</div>
+        <div class="menu-btn" onclick="toggleSection('dashboard')"><i class="fas fa-credit-card"></i> Menu Hutang</div>
+        <div class="menu-btn" onclick="toggleSection('dashboard')"><i class="fas fa-moon"></i> Zakat Mall</div>
+        <div class="menu-btn" onclick="toggleSection('dashboard')"><i class="fas fa-scroll"></i> Wasiat</div>
+        <div class="menu-btn" onclick="toggleSection('dashboard')"><i class="fas fa-folder-open"></i> Folder File</div>
+        <div class="menu-btn" onclick="toggleSection('dashboard')"><i class="fas fa-sticky-note"></i> Catatan</div>
+        <!-- MENU WARISAN BARU -->
+        <div class="menu-btn" onclick="toggleSection('warisan')" style="background-color: #fce7f3; border-color: #f9a8d4;"><i class="fas fa-balance-scale" style="color: #db2777;"></i> Menu Warisan</div>
+    </div>
+
+    <!-- Bagian 5: KATEGORI ASET -->
+    <div class="section-title">Pilih Kategori Aset:</div>
+    <div class="category-menus">
+        <div class="cat-pill active"><i class="fas fa-list"></i> All</div>
+        <div class="cat-pill"><i class="fas fa-home"></i> Properti</div>
+        <div class="cat-pill"><i class="fas fa-map"></i> Tanah</div>
+        <div class="cat-pill"><i class="fas fa-car"></i> Kendaraan</div>
+        <div class="cat-pill"><i class="fas fa-university"></i> Rekening Bank</div>
+        <div class="cat-pill"><i class="fas fa-chart-line"></i> Investasi</div>
+        <div class="cat-pill"><i class="fas fa-ring"></i> Logam Mulia</div>
+        <div class="cat-pill"><i class="fas fa-tools"></i> Peralatan</div>
+        <div class="cat-pill"><i class="fas fa-laptop"></i> Elektronik</div>
+    </div>
+
+    <!-- WADAH MENU WARISAN (Disembunyikan secara default) -->
+    <div id="warisanApp" class="waris-container">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #27ae60; padding-bottom: 10px; margin-bottom: 20px;">
+            <h2 style="margin:0; color: #2c3e50;"><i class="fas fa-balance-scale"></i> Kalkulator Waris (Faraidh) & Edit</h2>
+            <!-- Tombol Edit Khusus Warisan -->
+            <button onclick="openDetailModal('Pengaturan Waris', 'Keluarga', '0', 'Catatan Wasiat/Hutang Jenazah')" style="background: #27ae60; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;"><i class="fas fa-edit"></i> Edit / Catatan</button>
+        </div>
+        
+        <div class="info-pemberitahuan">
+            <strong>PENTING:</strong> Pastikan nominal harta di bawah ini adalah <strong>Harta Bersih</strong> setelah dikurangi biaya jenazah, utang almarhum/ah, warisan gono-gini, dan wasiat syar'i.
+        </div>
+
+        <div class="form-group">
+            <label for="skenario">Pilih Skenario Kematian:</label>
+            <select id="skenario" onchange="resetHasil()">
+                <option value="suami">Suami Meninggal (Ahli Waris: Istri, 1 Anak Perempuan, Ayah, Ibu)</option>
+                <option value="istri">Istri Meninggal (Ahli Waris: Suami, 1 Anak Perempuan, Ayah, Ibu)</option>
+                <option value="anak">Anak Perempuan Meninggal - Belum Menikah (Ahli Waris: Ayah, Ibu)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="totalHarta">Total Nominal Harta Bersih (Rp):</label>
+            <input type="number" id="totalHarta" placeholder="Contoh: 240000000" min="0">
+        </div>
+
+        <button onclick="hitungWaris()" style="background-color: #27ae60; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold;">Hitung Pembagian Waris</button>
+
+        <div id="resultBox" style="display: none; margin-top: 20px;">
+            <h3>Hasil Perhitungan Syar'i</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ahli Waris</th>
+                        <th>Porsi</th>
+                        <th>Persentase</th>
+                        <th>Nominal Diterima</th>
+                        <th>Dasar Dalil Naqli</th>
+                    </tr>
+                </thead>
+                <tbody id="resultBody">
+                    <!-- Hasil Hitungan via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- MODAL UNTUK RINCIAN & EDIT (Berlaku untuk semua kartu) -->
+<div class="modal-overlay" id="detailModal">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeModal()">&times;</span>
+        <h2 id="modalTitle" style="margin-top: 0; color: var(--primary);">Rincian & Edit</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: -10px;">Kelola rincian kepemilikan dan catatan khusus.</p>
+        
+        <div class="form-group">
+            <label>Pemilik Entitas</label>
+            <input type="text" id="modalOwner" readonly style="background: #f1f5f9; font-weight: bold; text-transform: uppercase;">
+        </div>
+        
+        <div class="form-group">
+            <label>Nominal (Rp)</label>
+            <input type="text" id="modalNominal">
+        </div>
+        
+        <div class="form-group">
+            <label>Rincian Kategori Aset/Hutang</label>
+            <input type="text" id="modalKategori" placeholder="Cth: Rekening BCA, Logam Mulia 10g...">
+        </div>
+
+        <div class="form-group">
+            <label>Catatan Khusus (Hanya terlihat di sini)</label>
+            <textarea id="modalCatatan" rows="4" placeholder="Tulis catatan penting, pengingat deadline, atau rincian sumber dana di sini..."></textarea>
+        </div>
+        
+        <button class="btn-save" onclick="simpanPerubahan()">Simpan Perubahan & Catatan</button>
+    </div>
+</div>
+
+<script>
+    // FUNGSI UNTUK MODAL (Pop-up Rincian & Edit)
+    function openDetailModal(jenis, nama, nominal, catatanDefault) {
+        document.getElementById('detailModal').style.display = 'flex';
+        document.getElementById('modalTitle').innerText = 'Edit Data: ' + jenis;
+        document.getElementById('modalOwner').value = nama;
+        document.getElementById('modalNominal').value = nominal;
+        document.getElementById('modalCatatan').value = catatanDefault;
+    }
+
+    function closeModal() {
+        document.getElementById('detailModal').style.display = 'none';
+    }
+
+    function simpanPerubahan() {
+        alert("Perubahan dan Catatan Khusus berhasil disimpan!");
+        closeModal();
+    }
+
+    // FUNGSI NAVIGASI MENU (Toggle Warisan vs Dashboard)
+    function toggleSection(section) {
+        // Hapus class active dari semua tombol menu
+        const btns = document.querySelectorAll('.menu-btn');
+        btns.forEach(btn => btn.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+
+        if(section === 'warisan') {
+            document.getElementById('warisanApp').style.display = 'block';
+            // Scroll otomatis ke bagian warisan
+            document.getElementById('warisanApp').scrollIntoView({ behavior: 'smooth' });
+        } else {
+            document.getElementById('warisanApp').style.display = 'none';
+        }
+    }
+
+    // FUNGSI KALKULATOR WARIS (Dari Kode User)
+    function formatRupiah(angka) {
+        return 'Rp ' + Number(angka).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+
+    function resetHasil() {
+        document.getElementById('resultBox').style.display = 'none';
+    }
+
+    function hitungWaris() {
+        const skenario = document.getElementById('skenario').value;
+        const totalHarta = parseFloat(document.getElementById('totalHarta').value);
+
+        if (isNaN(totalHarta) || totalHarta <= 0) {
+            alert("Silakan masukkan nominal harta bersih yang valid dan lebih dari 0.");
+            return;
+        }
+
+        let rows = "";
+        
+        if (skenario === "suami") {
+            const data = [
+                { nama: "Anak Perempuan Tunggal", porsi: "1/2 (12/24)", persen: 50.00, nominal: totalHarta * 0.50, dalil: "QS. An-Nisa: 11" },
+                { nama: "Ayah Kandung", porsi: "1/6 + Sisa (5/24)", persen: 20.83, nominal: totalHarta * (5/24), dalil: "QS. An-Nisa: 11 & HR. Bukhari 6732" },
+                { nama: "Ibu Kandung", porsi: "1/6 (4/24)", persen: 16.67, nominal: totalHarta * (4/24), dalil: "QS. An-Nisa: 11" },
+                { nama: "Istri (Janda)", porsi: "1/8 (3/24)", persen: 12.50, nominal: totalHarta * 0.125, dalil: "QS. An-Nisa: 12" }
+            ];
+            data.forEach(item => {
+                rows += `<tr><td><strong>${item.nama}</strong></td><td>${item.porsi}</td><td>${item.persen.toFixed(2)}%</td><td><mark style="background:#d1fae5; padding:3px; border-radius:3px;"><strong>${formatRupiah(item.nominal)}</strong></mark></td><td><div class="dalil-text">${item.dalil}</div></td></tr>`;
+            });
+
+        } else if (skenario === "istri") {
+            const data = [
+                { nama: "Anak Perempuan Tunggal", porsi: "6/13 (Aul)", persen: 46.15, nominal: totalHarta * (6/13), dalil: "QS. An-Nisa: 11 (Aul)" },
+                { nama: "Suami (Duda)", porsi: "3/13 (Aul)", persen: 23.08, nominal: totalHarta * (3/13), dalil: "QS. An-Nisa: 12 (Aul)" },
+                { nama: "Ayah Kandung", porsi: "2/13 (Aul)", persen: 15.38, nominal: totalHarta * (2/13), dalil: "QS. An-Nisa: 11 (Aul)" },
+                { nama: "Ibu Kandung", porsi: "2/13 (Aul)", persen: 15.38, nominal: totalHarta * (2/13), dalil: "QS. An-Nisa: 11 (Aul)" }
+            ];
+            data.forEach(item => {
+                rows += `<tr><td><strong>${item.nama}</strong></td><td>${item.porsi}</td><td>${item.persen.toFixed(2)}%</td><td><mark style="background:#d1fae5; padding:3px; border-radius:3px;"><strong>${formatRupiah(item.nominal)}</strong></mark></td><td><div class="dalil-text">${item.dalil}</div></td></tr>`;
+            });
+
+        } else if (skenario === "anak") {
+            const data = [
+                { nama: "Ayah Kandung", porsi: "Sisa (Asabah) - 2/3", persen: 66.67, nominal: totalHarta * (2/3), dalil: "Ijma Ulama & HR. Bukhari 6732" },
+                { nama: "Ibu Kandung", porsi: "1/3", persen: 33.33, nominal: totalHarta * (1/3), dalil: "QS. An-Nisa: 11" }
+            ];
+            data.forEach(item => {
+                rows += `<tr><td><strong>${item.nama}</strong></td><td>${item.porsi}</td><td>${item.persen.toFixed(2)}%</td><td><mark style="background:#d1fae5; padding:3px; border-radius:3px;"><strong>${formatRupiah(item.nominal)}</strong></mark></td><td><div class="dalil-text">${item.dalil}</div></td></tr>`;
+            });
+        }
+
+        document.getElementById('resultBody').innerHTML = rows;
+        document.getElementById('resultBox').style.display = 'block';
+    }
+</script>
+
 </body>
 </html>
